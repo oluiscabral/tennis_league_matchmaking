@@ -6,13 +6,10 @@ from dataclasses import dataclass
 from typing import Tuple
 
 from entity.availability import Availability
+from entity.team import Team
 
 
 @dataclass(frozen=True)
-class Match:
-    id: str
+class Matchup:
     availability: Availability
-    contestants: Tuple[str, str]
-
-    def __hash__(self):
-        return hash(self.id)
+    contestants: Tuple[Team, Team]

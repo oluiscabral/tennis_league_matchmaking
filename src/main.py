@@ -1,13 +1,9 @@
-import datetime
-from typing import Set
+from typing import List
 
-from entity.availability import Availability
-from entity.city import City
-from entity.court import Court
-from entity.division import Division
-from entity.player import Player
-from entity.team import Team
-from interactor.matchmaking.matchmaking import MatchmakingImpl
+from database.team import TeamDatabaseImpl
+from entity.matchup import Matchup
+from interactor.matchmaking.impl import MatchmakingImpl
+from interactor.team.impl import TeamInteractorImpl
 
 input_data = [{'team_id': 'rec0PkRLRqX17ERGT',
                'player1_id': 'recd1EtfW4z1abmmZ',
@@ -863,59 +859,57 @@ input_data = [{'team_id': 'rec0PkRLRqX17ERGT',
                'afternoon': set(),
                'evening': {'Saturday 8/26'}}
 """
-
-
-def get_division(data):
-    data_division = data['division'].lower()
-    if Division.BEGINNER.name.lower() == data_division:
-        return Division.BEGINNER
-    if Division.INTERMEDIATE.name.lower() == data_division:
-        return Division.INTERMEDIATE
-    if Division.ADVANCED.name.lower() == data_division:
-        return Division.ADVANCED
-    return None
-
-
-def create_dates(date_texts: Set[str]):
-    today = datetime.date.today()
-    dates = set()
-    for date_text in date_texts:
-        date_values_text = date_text.split(' ')[1]
-        date_value_texts = date_values_text.split('/')
-        day = int(date_value_texts[1])
-        month = int(date_value_texts[0])
-        created_date = datetime.date(month=month, day=day, year=today.year)
-        dates.add(created_date)
-    return dates
-
-
-def create_availability(data):
-    morning_dates = create_dates(data['morning'])
-    afternoon_dates = create_dates(data['afternoon'])
-    evening_dates = create_dates(data['evening'])
-    return Availability(morning_dates, afternoon_dates, evening_dates)
-
-
-def create_teams():
-    teams = set()
-    for data in input_data:
-        player_1 = Player(data['player1_id'], data['player1_coords'])
-        player_2 = Player(data['player2_id'], data['player2_coords'])
-        city = City(data['city'])
-        division = get_division(data)
-        home_court = Court(data['Home Court'])
-        availability = create_availability(data)
-        team = Team(data['team_id'], city, home_court, division, [player_1, player_2], list(), availability)
-        teams.add(team)
-    return teams
+WEEK_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
 
 def main():
-    teams = create_teams()
+    team_db = TeamDatabaseImpl()
+    team_interactor = TeamInteractorImpl()
+    team_interactor.set_db(team_db)
     matchmaking = MatchmakingImpl()
-    result = matchmaking.create_matchups(teams)
-    matchmaking.save_result(result)
-    print(result)
+    teams = team_interactor.create_teams(input_data)
+    matchups = matchmaking.get_best_matchups(teams)
+    team_interactor.save_matchups(matchups)
+    output = create_output(matchups)
+    print(output)
+
+
+def create_output(matchups: List[Matchup]):
+    output = list()
+    for matchup in matchups:
+        matchup_output = dict()
+        matchup_output['team1'] = matchup.contestants[0].id
+        matchup_output['team2'] = matchup.contestants[1].id
+        matchup_output['Reccomended Day/Times'] = get_daytimes_output(matchup)
+        output.append(matchup_output)
+    return output
+
+
+def get_daytimes_output(matchup: Matchup):
+    dates = list()
+    output = list()
+    availability = matchup.availability
+    for date in availability.morning:
+        dates.append((date, 0))
+    for date in availability.afternoon:
+        dates.append((date, 1))
+    for date in availability.evening:
+        dates.append((date, 2))
+    dates.sort(key=lambda d: (d[0], d[1]))
+    for entry in dates:
+        date, period = entry
+        weekday = date.weekday()
+        weekday_name = WEEK_DAYS[weekday]
+        period_name = "Morning"
+        if period == 1:
+            period_name = "Afternoon"
+        elif period == 2:
+            period_name = "Evening"
+        elif period != 0:
+            continue
+        output.append(f'{weekday_name} {period_name}')
+    return output
+
 
 if __name__ == '__main__':
     main()
