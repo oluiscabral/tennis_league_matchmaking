@@ -63,16 +63,10 @@ class MatchmakingImpl(Matchmaking):
 
     @staticmethod
     def _get_best_matchups(teams: Set[MatchmakingTeam]) -> Set[Matchup]:
-        best_result: MatchMakingResult | None = None
-        for team in teams:
-            MatchmakingImpl._reset(teams)
-            team.search_week_matchup()
-            result = MatchmakingImpl._get_matchmaking_result(teams)
-            if best_result is None or result.is_better_than(best_result):
-                best_result = result
-        if best_result is None:
-            return set()
-        return best_result.matchups
+        MatchmakingImpl._reset(teams)
+        MatchmakingImpl._init_lonely_matchups(teams)
+        result = MatchmakingImpl._get_matchmaking_result(teams)
+        return result.matchups
 
     @staticmethod
     def _reset(teams: Set[MatchmakingTeam]):
@@ -80,30 +74,69 @@ class MatchmakingImpl(Matchmaking):
             team.reset()
 
     @staticmethod
-    def _get_matchmaking_result(teams: Set[MatchmakingTeam]) -> MatchMakingResult:
-        byes = 0
-        matchups = set()
-        distance_points = 0
-        past_matches_points = 0
+    def _init_lonely_matchups(teams: Set[MatchmakingTeam]):
         for team in teams:
-            already_computed = False
-            for matchup in matchups:
-                if team in matchup.contestants:
-                    already_computed = True
-                    break
-            if already_computed:
+            if team.is_lonely():
                 continue
-            if not team.has_found_best_edge():
-                byes += 1
-                continue
-            matchup = MatchmakingImpl._create_matchup(team.best_edge)
-            matchups.add(matchup)
-            distance_points += team.best_edge.distance_points
-            past_matches_points += team.best_edge.past_matches_points
-        return MatchMakingResult(byes, matchups, distance_points, past_matches_points)
+            team.search_lonely_edge()
 
     @staticmethod
     def _create_matchup(best_edge: MatchmakingEdge) -> Matchup:
         availability = best_edge.a.availability.get_intersection(best_edge.b.availability)
         contestants = (best_edge.a, best_edge.b)
         return Matchup(availability, contestants)
+
+    @staticmethod
+    def _get_matchmaking_result(teams: Set[MatchmakingTeam]) -> MatchMakingResult:
+        byes = 0
+        matchups = set()
+        distance_points = 0
+        past_matches_points = 0
+        while True:
+            possible_edges = MatchmakingImpl._get_possible_edges(teams)
+            if possible_edges == 0:
+                break
+            for team in teams:
+                already_computed = False
+                for matchup in matchups:
+                    if team in matchup.contestants:
+                        already_computed = True
+                        break
+                if already_computed:
+                    continue
+                if team.is_lonely():
+                    continue
+                best_edge = team.search_lonely_edge()
+                if best_edge is None:
+                    continue
+                matchup = MatchmakingImpl._create_matchup(best_edge)
+                matchups.add(matchup)
+                distance_points += best_edge.distance_points
+                past_matches_points += best_edge.past_matches_points
+            for team in teams:
+                already_computed = False
+                for matchup in matchups:
+                    if team in matchup.contestants:
+                        already_computed = True
+                        break
+                if already_computed:
+                    continue
+                best_edge = team.search_best_edge()
+                if best_edge is None:
+                    continue
+                matchup = MatchmakingImpl._create_matchup(best_edge)
+                matchups.add(matchup)
+                distance_points += best_edge.distance_points
+                past_matches_points += best_edge.past_matches_points
+        for team in teams:
+            if not team.has_found_best_edge():
+                byes += 1
+        return MatchMakingResult(byes, matchups, distance_points, past_matches_points)
+
+    @classmethod
+    def _get_possible_edges(cls, teams: Set[MatchmakingTeam]) -> int:
+        possible_edges = 0
+        for team in teams:
+            if not team.has_found_best_edge():
+                possible_edges += team.get_possible_edges()
+        return possible_edges

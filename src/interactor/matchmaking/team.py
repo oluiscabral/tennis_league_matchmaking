@@ -60,6 +60,24 @@ class MatchmakingTeam:
     def has_found_best_edge(self) -> bool:
         return self._best_edge is not None
 
+    def is_lonely(self) -> bool:
+        possible_edges = 0
+        for edge in self._edges:
+            node = self._get_output_node(edge)
+            if not node.has_found_best_edge():
+                possible_edges += 1
+            if possible_edges > 1:
+                return False
+        return True
+
+    def get_possible_edges(self):
+        possible_edges = 0
+        for edge in self._edges:
+            node = self._get_output_node(edge)
+            if not node.has_found_best_edge():
+                possible_edges += 1
+        return possible_edges
+
     def add_edge(self, edge: 'MatchmakingEdge'):
         for stored_edge in self._edges:
             if edge.a == stored_edge.a and edge.b == stored_edge.b:
@@ -68,7 +86,7 @@ class MatchmakingTeam:
                 return
         self._edges.add(edge)
 
-    def search_week_matchup(self) -> MatchmakingEdge | None:
+    def search_best_edge(self) -> MatchmakingEdge | None:
         self._is_searching = True
         while True:
             best_edge: 'MatchmakingEdge | None' = None
@@ -88,12 +106,11 @@ class MatchmakingTeam:
             if best_edge_node is None:
                 return None
             if best_edge_node.is_searching():
-                self._is_searching = False
-                self._best_edge = best_edge
+                self.set_best_edge(best_edge)
                 best_edge_node.set_best_edge(best_edge)
                 return self._best_edge
             else:
-                best_edge_node.search_week_matchup()
+                best_edge_node.search_best_edge()
 
     def _get_output_node(self, edge: 'MatchmakingEdge') -> 'MatchmakingTeam':
         if edge.a.id == self.id:
@@ -102,7 +119,26 @@ class MatchmakingTeam:
 
     def set_best_edge(self, edge: 'MatchmakingEdge'):
         self._best_edge = edge
+        self._is_searching = False
 
     def reset(self):
         self._best_edge = None
         self._is_searching = False
+
+    def search_lonely_edge(self) -> MatchmakingEdge | None:
+        best_edge: 'MatchmakingEdge | None' = None
+        best_edge_node: 'MatchMakingTeam | None' = None
+        for edge in self._edges:
+            node = self._get_output_node(edge)
+            if not node.is_lonely():
+                continue
+            if (best_edge is None
+                    or (edge.distance_points <= best_edge.distance_points
+                        and edge.past_matches_points <= best_edge.past_matches_points)):
+                best_edge = edge
+                best_edge_node = node
+        if best_edge is not None:
+            self.set_best_edge(best_edge)
+            best_edge_node.set_best_edge(best_edge)
+            return best_edge
+        return None
