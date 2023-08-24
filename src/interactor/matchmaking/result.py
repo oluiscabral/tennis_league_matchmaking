@@ -18,4 +18,6 @@ class MatchMakingResult:
     def is_better_than(self, other: 'MatchMakingResult'):
         if self.byes < other.byes:
             return True
-        return self.distance_points < other.distance_points and self.past_matches_points < self.past_matches_points
+        elif other.byes < self.byes:
+            return False
+        return self.distance_points < other.distance_points and self.past_matches_points <= self.past_matches_points
