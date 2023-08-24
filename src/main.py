@@ -846,19 +846,6 @@ input_data = [{'team_id': 'rec0PkRLRqX17ERGT',
                'afternoon': set(),
                'evening': {'Monday 8/21', 'Saturday 8/26', 'Sunday 8/27', 'Thursday 8/24'}}]
 
-"""
-{'team_id': 'rec0PkRLRqX17ERGT',
-               'player1_id': 'recd1EtfW4z1abmmZ',
-               'player2_id': 'recfwFg1Bb6fOSjEf',
-               'player1_coords': ('35.715806', '-78.711512'),
-               'player2_coords': ('35.582594', '-78.750939'),
-               'city': 'New York',
-               'division': 'Intermediate',
-               'Home Court': 'Court A',
-               'morning': {'Saturday 8/26', 'Sunday 8/27'},
-               'afternoon': set(),
-               'evening': {'Saturday 8/26'}}
-"""
 WEEK_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
 
